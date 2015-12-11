@@ -19,6 +19,7 @@ namespace EasyNetQ.AutoSubscribe
         protected const string DispatchMethodName = "Dispatch";
         protected const string DispatchAsyncMethodName = "DispatchAsync";
         protected readonly IBus bus;
+        private readonly List<ISubscriptionResult> subscriptions = new List<ISubscriptionResult>();
 
         /// <summary>
         /// Used when generating the unique SubscriptionId checksum.
@@ -47,6 +48,11 @@ namespace EasyNetQ.AutoSubscribe
         /// methods by using an <see cref="SubscriptionConfigurationAttribute"/>.
         /// </summary>
         public Action<ISubscriptionConfiguration> ConfigureSubscriptionConfiguration { protected get; set; }
+
+        public IEnumerable<ISubscriptionResult> Subscriptions
+        {
+            get { return subscriptions; }
+        }
 
         public AutoSubscriber(IBus bus, string subscriptionIdPrefix)
         {
@@ -151,7 +157,8 @@ namespace EasyNetQ.AutoSubscribe
                     var subscriptionId = subscriptionAttribute != null ? subscriptionAttribute.SubscriptionId : GenerateSubscriptionId(subscriptionInfo);
                     var busSubscribeMethod = genericBusSubscribeMethod.MakeGenericMethod(subscriptionInfo.MessageType);
                     Action<ISubscriptionConfiguration> configAction = GenerateConfigurationAction(subscriptionInfo);
-                    busSubscribeMethod.Invoke(bus, new object[] { subscriptionId, dispatchDelegate, configAction });
+                    var result = busSubscribeMethod.Invoke(bus, new object[] { subscriptionId, dispatchDelegate, configAction }) as ISubscriptionResult;
+                    subscriptions.Add(result);
                 }
             }
         }
